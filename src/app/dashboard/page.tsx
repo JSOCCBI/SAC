@@ -10,7 +10,6 @@ import { supabase } from "@/lib/supabase";
 type UserProfile = {
   id: string;
   full_name: string | null;
-  email: string | null;
   role: "staff" | "manager";
   active: boolean;
 };
@@ -53,7 +52,7 @@ export default function DashboardPage() {
 
     const { data } = await supabase
       .from("user_profiles")
-      .select("id, full_name, email, role, active")
+      .select("id, full_name, role, active")
       .order("full_name");
 
     setUsers((data as UserProfile[]) || []);
@@ -105,9 +104,7 @@ export default function DashboardPage() {
   }
 
   const filtered = users.filter(u => {
-    const matchSearch =
-      (u.full_name?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
-      (u.email?.toLowerCase().includes(search.toLowerCase()) ?? false);
+    const matchSearch = u.full_name?.toLowerCase().includes(search.toLowerCase()) ?? false;
     const matchFilter = filter === "all" || u.role === filter;
     return matchSearch && matchFilter;
   });
@@ -224,7 +221,7 @@ export default function DashboardPage() {
                       className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
                       style={{ backgroundColor: user.role === "manager" ? "var(--accent)" : "#10B981" }}
                     >
-                      {(user.full_name || user.email || "?").charAt(0).toUpperCase()}
+                      {(user.full_name || "?").charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
                       <p className="font-semibold text-gray-900 text-sm truncate">
@@ -233,7 +230,7 @@ export default function DashboardPage() {
                           <span className="ml-1.5 text-xs font-normal text-gray-400">(you)</span>
                         )}
                       </p>
-                      <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                      <p className="text-xs text-gray-400 truncate capitalize">{user.role}</p>
                     </div>
                   </div>
 
