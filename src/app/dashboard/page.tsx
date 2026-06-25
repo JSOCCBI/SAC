@@ -1,0 +1,315 @@
+"use client";
+
+export const dynamic = "force-dynamic";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabase";
+
+type UserProfile = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  role: "staff" | "manager";
+  active: boolean;
+};
+
+type AppBadge = { label: string; color: string };
+
+const APP_ACCESS: Record<string, AppBadge[]> = {
+  staff: [{ label: "SEC", color: "bg-emerald-100 text-emerald-700" }],
+  manager: [
+    { label: "SEC", color: "bg-emerald-100 text-emerald-700" },
+    { label: "IMS", color: "bg-blue-100 text-blue-700" },
+    { label: "SAC", color: "bg-purple-100 text-purple-700" },
+  ],
+};
+
+const fadeInUp = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+};
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [updating, setUpdating] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | "staff" | "manager">("all");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  async function loadData() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { router.replace("/login"); return; }
+    setCurrentUserId(session.user.id);
+
+    const { data } = await supabase
+      .from("user_profiles")
+      .select("id, full_name, email, role, active")
+      .order("full_name");
+
+    setUsers((data as UserProfile[]) || []);
+    setLoading(false);
+  }
+
+  async function toggleRole(user: UserProfile) {
+    const newRole = user.role === "staff" ? "manager" : "staff";
+    setUpdating(user.id);
+
+    const { error } = await supabase
+      .from("user_profiles")
+      .update({ role: newRole })
+      .eq("id", user.id);
+
+    if (error) {
+      showToast("Failed to update role.", "error");
+    } else {
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role: newRole } : u));
+      showToast(`${user.full_name || "User"} is now ${newRole}.`, "success");
+    }
+    setUpdating(null);
+  }
+
+  async function toggleActive(user: UserProfile) {
+    setUpdating(user.id + "_active");
+    const { error } = await supabase
+      .from("user_profiles")
+      .update({ active: !user.active })
+      .eq("id", user.id);
+
+    if (error) {
+      showToast("Failed to update status.", "error");
+    } else {
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, active: !u.active } : u));
+      showToast(`${user.full_name || "User"} ${!user.active ? "activated" : "deactivated"}.`, "success");
+    }
+    setUpdating(null);
+  }
+
+  function showToast(message: string, type: "success" | "error") {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.replace("/login");
+  }
+
+  const filtered = users.filter(u => {
+    const matchSearch =
+      (u.full_name?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
+      (u.email?.toLowerCase().includes(search.toLowerCase()) ?? false);
+    const matchFilter = filter === "all" || u.role === filter;
+    return matchSearch && matchFilter;
+  });
+
+  const staffCount = users.filter(u => u.role === "staff").length;
+  const managerCount = users.filter(u => u.role === "manager").length;
+
+  return (
+    <main className="min-h-dvh bg-gray-50 sac-grid-bg">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-20">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center" style={{ backgroundColor: "var(--accent)" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-base font-bold text-gray-900 leading-none">SOS Access</h1>
+              <p className="text-xs text-gray-400 mt-0.5">User Management</p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors flex items-center gap-1.5"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Logout
+          </button>
+        </div>
+      </header>
+
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        {/* Stats */}
+        <motion.div {...fadeInUp} className="grid grid-cols-3 gap-3 mb-6">
+          {[
+            { label: "Total Users", value: users.length, color: "text-gray-900" },
+            { label: "Staff", value: staffCount, color: "text-emerald-600" },
+            { label: "Managers", value: managerCount, color: "text-blue-600" },
+          ].map(stat => (
+            <div key={stat.label} className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
+              <p className={`text-2xl font-bold ${stat.color}`}>{loading ? "—" : stat.value}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{stat.label}</p>
+            </div>
+          ))}
+        </motion.div>
+
+        {/* Search + Filter */}
+        <motion.div {...fadeInUp} transition={{ delay: 0.05, ...fadeInUp.transition }} className="flex gap-2 mb-4">
+          <div className="relative flex-1">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search users…"
+              className="w-full border border-gray-200 rounded-xl pl-8 pr-4 py-2.5 text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors bg-white"
+            />
+          </div>
+          <div className="flex rounded-xl overflow-hidden border border-gray-200 bg-white text-sm">
+            {(["all", "staff", "manager"] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-2.5 capitalize font-medium transition-colors ${filter === f ? "text-white" : "text-gray-500 hover:text-gray-700"}`}
+                style={filter === f ? { backgroundColor: "var(--accent)" } : {}}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* User list */}
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse">
+                <div className="h-4 bg-gray-100 rounded w-1/3 mb-2"/>
+                <div className="h-3 bg-gray-100 rounded w-1/2"/>
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <motion.div {...fadeInUp} className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
+            <p className="text-gray-400 text-sm">No users found.</p>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial="initial"
+            animate="animate"
+            variants={{ animate: { transition: { staggerChildren: 0.04 } } }}
+            className="space-y-3"
+          >
+            {filtered.map(user => (
+              <motion.div
+                key={user.id}
+                variants={fadeInUp}
+                className={`bg-white rounded-2xl border p-4 transition-all ${!user.active ? "opacity-60 border-gray-100" : "border-gray-100 hover:border-gray-200"}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  {/* Avatar + name */}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                      style={{ backgroundColor: user.role === "manager" ? "var(--accent)" : "#10B981" }}
+                    >
+                      {(user.full_name || user.email || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm truncate">
+                        {user.full_name || "—"}
+                        {user.id === currentUserId && (
+                          <span className="ml-1.5 text-xs font-normal text-gray-400">(you)</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                    </div>
+                  </div>
+
+                  {/* Controls */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Active toggle */}
+                    <button
+                      onClick={() => toggleActive(user)}
+                      disabled={updating === user.id + "_active" || user.id === currentUserId}
+                      title={user.active ? "Deactivate" : "Activate"}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors disabled:opacity-40 ${user.active ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}
+                    >
+                      {updating === user.id + "_active" ? (
+                        <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.3"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          {user.active ? <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></> : <><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></>}
+                        </svg>
+                      )}
+                    </button>
+
+                    {/* Role toggle button */}
+                    <button
+                      onClick={() => toggleRole(user)}
+                      disabled={updating === user.id || user.id === currentUserId}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                        user.role === "manager"
+                          ? "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                          : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                      }`}
+                    >
+                      {updating === user.id ? "…" : user.role === "manager" ? "Manager" : "Staff"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* App access badges */}
+                <div className="flex items-center gap-1.5 mt-3 pl-[52px]">
+                  <span className="text-xs text-gray-400 mr-0.5">Access:</span>
+                  {APP_ACCESS[user.role].map(badge => (
+                    <span key={badge.label} className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${badge.color}`}>
+                      {badge.label}
+                    </span>
+                  ))}
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+
+        {!loading && filtered.length > 0 && (
+          <p className="text-center text-xs text-gray-400 mt-6">
+            Showing {filtered.length} of {users.length} users · Tap a role to toggle
+          </p>
+        )}
+      </div>
+
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key="toast"
+            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.96 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className={`fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-2xl text-sm font-medium shadow-lg z-50 ${
+              toast.type === "success"
+                ? "bg-gray-900 text-white"
+                : "bg-red-500 text-white"
+            }`}
+          >
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </main>
+  );
+}

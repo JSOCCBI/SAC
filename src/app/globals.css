@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #0A0A0A;
+  --accent: #3B5BDB;
+  --accent-bg: rgba(59, 91, 219, 0.1);
+  --accent-dark: #2F4AC0;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-plus-jakarta);
+  --font-mono: var(--font-geist-mono);
+}
+
+html, body {
+  background: #ffffff !important;
+  color: #0A0A0A;
+  font-family: var(--font-plus-jakarta), sans-serif;
+  min-height: 100vh;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+
+input, select, textarea {
+  font-size: 16px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+select,
+textarea {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
+@supports (padding: max(0px)) {
+  body {
+    padding-top: max(0px, env(safe-area-inset-top));
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  * {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  input, textarea, [contenteditable] {
+    -webkit-user-select: auto;
+    user-select: auto;
+  }
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sac-grid-bg {
+  background-image: radial-gradient(circle at 1px 1px, rgba(209, 213, 219, 0.4) 1px, transparent 0);
+  background-size: 28px 28px;
+}
+
+.text-accent { color: var(--accent); }
+.bg-accent { background-color: var(--accent); }
+.bg-accent-soft { background-color: var(--accent-bg); }
+.border-accent { border-color: var(--accent); }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 2px; }
