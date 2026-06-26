@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 const fadeInUp = {
@@ -10,11 +11,13 @@ const fadeInUp = {
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
 };
+const stagger = { animate: { transition: { staggerChildren: 0.07 } } };
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -53,88 +56,88 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-dvh sac-grid-bg flex items-center justify-center px-5 py-10">
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-sm"
-      >
-        {/* Logo / brand */}
-        <motion.div {...fadeInUp} transition={{ delay: 0.05, ...fadeInUp.transition }} className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-accent mb-4">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-              <path d="M2 17l10 5 10-5"/>
-              <path d="M2 12l10 5 10-5"/>
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">SOS Access</h1>
-          <p className="text-sm text-gray-500 mt-1">Manager access only</p>
-        </motion.div>
+    <div className="min-h-screen bg-white flex flex-col">
+      <div className="fixed inset-0 -z-10 sac-grid-bg pointer-events-none" />
 
-        {/* Card */}
-        <motion.div
-          {...fadeInUp}
-          transition={{ delay: 0.1, ...fadeInUp.transition }}
-          className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
-        >
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                Email
-              </label>
-              <input
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@hamad.qa"
-                required
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
-              />
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+        <motion.div initial="initial" animate="animate" variants={stagger} className="w-full max-w-sm">
+
+          {/* Logo */}
+          <motion.div variants={fadeInUp} className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-black mb-4">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
             </div>
+            <h1 className="text-2xl font-light text-gray-900 tracking-tight">
+              SOS <span className="font-extrabold">Access</span>
+            </h1>
+            <p className="text-sm text-gray-400 mt-1">Manager access only</p>
+          </motion.div>
 
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                Password
-              </label>
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
-              />
-            </div>
+          {/* Card */}
+          <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.5px] mb-5">Sign in to your account</p>
 
-            {error && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-3"
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Email</label>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="you@hamad.qa"
+                  required
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                  <p className="text-xs text-red-600 font-medium">{error}</p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-black text-white font-bold text-sm rounded-xl py-3 flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {error}
-              </motion.p>
-            )}
+                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing in…</> : "Sign In"}
+              </button>
+            </form>
+          </motion.div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-accent hover:bg-accent-dark text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm mt-2"
-              style={{ backgroundColor: "var(--accent)" }}
-            >
-              {loading ? "Signing in…" : "Sign In"}
-            </button>
-          </form>
+          <motion.p variants={fadeInUp} className="text-center text-xs text-gray-400 mt-6">
+            SOS Operations · Hamad Medical Corporation
+          </motion.p>
         </motion.div>
-
-        <p className="text-center text-xs text-gray-400 mt-6">
-          SOS Operations · Hamad Medical Corporation
-        </p>
-      </motion.div>
-    </main>
+      </div>
+    </div>
   );
 }
