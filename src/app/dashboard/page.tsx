@@ -63,13 +63,14 @@ export default function DashboardPage() {
     const newRole = user.role === "staff" ? "manager" : "staff";
     setUpdating(user.id);
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("user_profiles")
       .update({ role: newRole })
-      .eq("id", user.id);
+      .eq("id", user.id)
+      .select("id");
 
-    if (error) {
-      showToast("Failed to update role.", "error");
+    if (error || !data || data.length === 0) {
+      showToast("Failed to update role. Check permissions.", "error");
     } else {
       setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role: newRole } : u));
       showToast(`${user.full_name || "User"} is now ${newRole}.`, "success");
@@ -79,13 +80,14 @@ export default function DashboardPage() {
 
   async function toggleActive(user: UserProfile) {
     setUpdating(user.id + "_active");
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("user_profiles")
       .update({ active: !user.active })
-      .eq("id", user.id);
+      .eq("id", user.id)
+      .select("id");
 
-    if (error) {
-      showToast("Failed to update status.", "error");
+    if (error || !data || data.length === 0) {
+      showToast("Failed to update status. Check permissions.", "error");
     } else {
       setUsers(prev => prev.map(u => u.id === user.id ? { ...u, active: !u.active } : u));
       showToast(`${user.full_name || "User"} ${!user.active ? "activated" : "deactivated"}.`, "success");
