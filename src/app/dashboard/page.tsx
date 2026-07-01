@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Settings } from "lucide-react";
+import { Loader2, Settings, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type UserProfile = {
@@ -13,6 +13,14 @@ type UserProfile = {
   full_name: string | null;
   role: "staff" | "manager";
   active: boolean;
+  created_at: string;
+};
+
+type AuditEntry = {
+  id: string;
+  user_email: string;
+  action: string;
+  created_at: string;
 };
 
 type AppBadge = { label: string; color: string };
@@ -32,14 +40,28 @@ const fadeInUp = {
   transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
 };
 
+const NEW_USER_DAYS = 14;
+
+function daysBefore(n: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString();
+}
+
+function isNew(createdAt: string) {
+  return new Date(createdAt) >= new Date(daysBefore(NEW_USER_DAYS));
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "staff" | "manager">("all");
+  const [filter, setFilter] = useState<"all" | "staff" | "manager" | "new">("all");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
@@ -50,14 +72,40 @@ export default function DashboardPage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.replace("/login"); return; }
     setCurrentUserId(session.user.id);
+    setCurrentUserEmail(session.user.email ?? null);
 
-    const { data } = await supabase
-      .from("user_profiles")
-      .select("id, full_name, role, active")
-      .order("full_name");
+    const [{ data: userData }, { data: logData }] = await Promise.all([
+      supabase
+        .from("user_profiles")
+        .select("id, full_name, role, active, created_at")
+        .order("full_name"),
+      supabase
+        .from("inventory_audit_log")
+        .select("id, user_email, action, created_at")
+        .like("action", "[Access]%")
+        .order("created_at", { ascending: false })
+        .limit(8),
+    ]);
 
-    setUsers((data as UserProfile[]) || []);
+    setUsers((userData as UserProfile[]) || []);
+    setAuditLog((logData as AuditEntry[]) || []);
     setLoading(false);
+  }
+
+  async function logAccess(action: string) {
+    if (!currentUserEmail) return;
+    await supabase.from("inventory_audit_log").insert({
+      user_email: currentUserEmail,
+      action: `[Access] ${action}`,
+    });
+    // Refresh log
+    const { data } = await supabase
+      .from("inventory_audit_log")
+      .select("id, user_email, action, created_at")
+      .like("action", "[Access]%")
+      .order("created_at", { ascending: false })
+      .limit(8);
+    setAuditLog((data as AuditEntry[]) || []);
   }
 
   async function toggleRole(user: UserProfile) {
@@ -75,23 +123,26 @@ export default function DashboardPage() {
     } else {
       setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role: newRole } : u));
       showToast(`${user.full_name || "User"} is now ${newRole}.`, "success");
+      await logAccess(`${user.full_name || "Unknown"} role changed to ${newRole}`);
     }
     setUpdating(null);
   }
 
   async function toggleActive(user: UserProfile) {
     setUpdating(user.id + "_active");
+    const newActive = !user.active;
     const { data, error } = await supabase
       .from("user_profiles")
-      .update({ active: !user.active })
+      .update({ active: newActive })
       .eq("id", user.id)
       .select("id");
 
     if (error || !data || data.length === 0) {
       showToast("Failed to update status. Check permissions.", "error");
     } else {
-      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, active: !u.active } : u));
-      showToast(`${user.full_name || "User"} ${!user.active ? "activated" : "deactivated"}.`, "success");
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, active: newActive } : u));
+      showToast(`${user.full_name || "User"} ${newActive ? "activated" : "deactivated"}.`, "success");
+      await logAccess(`${user.full_name || "Unknown"} ${newActive ? "activated" : "deactivated"}`);
     }
     setUpdating(null);
   }
@@ -106,14 +157,24 @@ export default function DashboardPage() {
     router.replace("/login");
   }
 
+  const newUserCount = users.filter(u => isNew(u.created_at)).length;
+  const staffCount   = users.filter(u => u.role === "staff").length;
+  const managerCount = users.filter(u => u.role === "manager").length;
+
   const filtered = users.filter(u => {
     const matchSearch = u.full_name?.toLowerCase().includes(search.toLowerCase()) ?? false;
-    const matchFilter = filter === "all" || u.role === filter;
-    return matchSearch && matchFilter;
+    if (filter === "new")     return matchSearch && isNew(u.created_at);
+    if (filter === "staff")   return matchSearch && u.role === "staff";
+    if (filter === "manager") return matchSearch && u.role === "manager";
+    return matchSearch;
   });
 
-  const staffCount = users.filter(u => u.role === "staff").length;
-  const managerCount = users.filter(u => u.role === "manager").length;
+  const filterTabs: { key: "all" | "staff" | "manager" | "new"; label: string; badge?: number }[] = [
+    { key: "all",     label: "All" },
+    { key: "new",     label: "New", badge: newUserCount },
+    { key: "staff",   label: "Staff" },
+    { key: "manager", label: "Manager" },
+  ];
 
   return (
     <div className="min-h-screen bg-white">
@@ -179,7 +240,35 @@ export default function DashboardPage() {
           ))}
         </motion.div>
 
-        {/* Search + Filter */}
+        {/* Access Log */}
+        {auditLog.length > 0 && (
+          <motion.div {...fadeInUp} transition={{ delay: 0.06, ...fadeInUp.transition }}
+            className="bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 mb-5"
+          >
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.5px] mb-3">Access Log</p>
+            <div className="space-y-2.5">
+              {auditLog.map(entry => {
+                const dt = new Date(entry.created_at);
+                const action = entry.action.replace(/^\[Access\]\s*/, "");
+                return (
+                  <div key={entry.id} className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-700 font-medium leading-snug">{action}</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">{entry.user_email}</p>
+                    </div>
+                    <span className="text-[11px] text-gray-400 shrink-0 pt-0.5">
+                      {dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+                      {" "}
+                      {dt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Search + Filter tabs */}
         <motion.div {...fadeInUp} transition={{ delay: 0.08, ...fadeInUp.transition }} className="flex gap-2 mb-4">
           <div className="relative flex-1">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -194,17 +283,37 @@ export default function DashboardPage() {
             />
           </div>
           <div className="flex rounded-xl overflow-hidden border border-gray-200 bg-white text-sm">
-            {(["all", "staff", "manager"] as const).map(f => (
+            {filterTabs.map(tab => (
               <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-2.5 capitalize font-medium transition-colors ${filter === f ? "bg-black text-white" : "text-gray-500 hover:text-gray-700"}`}
+                key={tab.key}
+                onClick={() => setFilter(tab.key)}
+                className={`relative px-3 py-2.5 font-medium transition-colors flex items-center gap-1.5 ${filter === tab.key ? "bg-black text-white" : "text-gray-500 hover:text-gray-700"}`}
               >
-                {f}
+                {tab.key === "new" && <Sparkles className="w-3 h-3" />}
+                {tab.label}
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${filter === tab.key ? "bg-white/20 text-white" : "bg-amber-100 text-amber-600"}`}>
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             ))}
           </div>
         </motion.div>
+
+        {/* New users helper banner */}
+        {filter === "new" && !loading && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
+            className="flex items-start gap-2.5 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-4"
+          >
+            <Sparkles className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-bold text-amber-800">New registrations — last {NEW_USER_DAYS} days</p>
+              <p className="text-[11px] text-amber-600 mt-0.5">Review each user and set their role and active status as needed.</p>
+            </div>
+          </motion.div>
+        )}
 
         {/* User list */}
         {loading ? (
@@ -213,7 +322,9 @@ export default function DashboardPage() {
           </div>
         ) : filtered.length === 0 ? (
           <motion.div {...fadeInUp} className="bg-white rounded-2xl border border-gray-100 p-10 text-center shadow-sm">
-            <p className="text-gray-400 text-sm">No users found.</p>
+            <p className="text-gray-400 text-sm">
+              {filter === "new" ? `No new users in the last ${NEW_USER_DAYS} days.` : "No users found."}
+            </p>
           </motion.div>
         ) : (
           <motion.div
@@ -222,77 +333,87 @@ export default function DashboardPage() {
             variants={{ animate: { transition: { staggerChildren: 0.04 } } }}
             className="space-y-3"
           >
-            {filtered.map(user => (
-              <motion.div
-                key={user.id}
-                variants={fadeInUp}
-                className={`bg-white rounded-2xl border p-4 shadow-sm transition-all ${!user.active ? "opacity-50 border-gray-100" : "border-gray-100 hover:border-gray-200"}`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  {/* Avatar + name */}
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${user.role === "manager" ? "bg-black" : "bg-gray-400"}`}>
-                      {(user.full_name || "?").charAt(0).toUpperCase()}
+            {filtered.map(user => {
+              const userIsNew = isNew(user.created_at);
+              return (
+                <motion.div
+                  key={user.id}
+                  variants={fadeInUp}
+                  className={`bg-white rounded-2xl border p-4 shadow-sm transition-all ${!user.active ? "opacity-50 border-gray-100" : userIsNew ? "border-amber-200" : "border-gray-100 hover:border-gray-200"}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    {/* Avatar + name */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${user.role === "manager" ? "bg-black" : "bg-gray-400"}`}>
+                        {(user.full_name || "?").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-semibold text-gray-900 text-sm truncate">
+                            {user.full_name || "—"}
+                            {user.id === currentUserId && (
+                              <span className="ml-1.5 text-xs font-normal text-gray-400">(you)</span>
+                            )}
+                          </p>
+                          {userIsNew && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-lg shrink-0">
+                              <Sparkles className="w-2.5 h-2.5" /> New
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 capitalize">{user.role}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-gray-900 text-sm truncate">
-                        {user.full_name || "—"}
-                        {user.id === currentUserId && (
-                          <span className="ml-1.5 text-xs font-normal text-gray-400">(you)</span>
+
+                    {/* Controls */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* Active toggle */}
+                      <button
+                        onClick={() => toggleActive(user)}
+                        disabled={updating === user.id + "_active" || user.id === currentUserId}
+                        title={user.active ? "Deactivate" : "Activate"}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors disabled:opacity-40 ${user.active ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}
+                      >
+                        {updating === user.id + "_active" ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : user.active ? (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                          </svg>
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                          </svg>
                         )}
-                      </p>
-                      <p className="text-xs text-gray-400 capitalize">{user.role}</p>
+                      </button>
+
+                      {/* Role toggle */}
+                      <button
+                        onClick={() => toggleRole(user)}
+                        disabled={updating === user.id || user.id === currentUserId}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                          user.role === "manager"
+                            ? "bg-black text-white hover:bg-gray-800"
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        }`}
+                      >
+                        {updating === user.id ? <Loader2 className="w-3 h-3 animate-spin" /> : user.role === "manager" ? "Manager" : "Staff"}
+                      </button>
                     </div>
                   </div>
 
-                  {/* Controls */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {/* Active toggle */}
-                    <button
-                      onClick={() => toggleActive(user)}
-                      disabled={updating === user.id + "_active" || user.id === currentUserId}
-                      title={user.active ? "Deactivate" : "Activate"}
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors disabled:opacity-40 ${user.active ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}
-                    >
-                      {updating === user.id + "_active" ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : user.active ? (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-                        </svg>
-                      ) : (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
-                        </svg>
-                      )}
-                    </button>
-
-                    {/* Role toggle */}
-                    <button
-                      onClick={() => toggleRole(user)}
-                      disabled={updating === user.id || user.id === currentUserId}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                        user.role === "manager"
-                          ? "bg-black text-white hover:bg-gray-800"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      }`}
-                    >
-                      {updating === user.id ? <Loader2 className="w-3 h-3 animate-spin" /> : user.role === "manager" ? "Manager" : "Staff"}
-                    </button>
+                  {/* App access badges */}
+                  <div className="flex items-center gap-1.5 mt-3 pl-[52px]">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.4px] mr-0.5">Access:</span>
+                    {APP_ACCESS[user.role].map(badge => (
+                      <span key={badge.label} className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${badge.color}`}>
+                        {badge.label}
+                      </span>
+                    ))}
                   </div>
-                </div>
-
-                {/* App access badges */}
-                <div className="flex items-center gap-1.5 mt-3 pl-[52px]">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.4px] mr-0.5">Access:</span>
-                  {APP_ACCESS[user.role].map(badge => (
-                    <span key={badge.label} className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${badge.color}`}>
-                      {badge.label}
-                    </span>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </motion.div>
         )}
 
