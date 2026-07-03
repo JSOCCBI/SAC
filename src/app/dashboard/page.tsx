@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Settings, Sparkles } from "lucide-react";
+import { Loader2, Settings, Sparkles, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type UserProfile = {
@@ -60,6 +60,7 @@ export default function DashboardPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "staff" | "manager" | "new">("all");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -152,6 +153,12 @@ export default function DashboardPage() {
     setTimeout(() => setToast(null), 3000);
   }
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     router.replace("/login");
@@ -194,6 +201,14 @@ export default function DashboardPage() {
             <span className="text-lg font-light text-gray-900 tracking-tight">SOS <span className="font-extrabold">Access</span></span>
           </div>
           <div className="flex items-center gap-1">
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="p-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700 disabled:opacity-40"
+              title="Refresh"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            </button>
             <button
               onClick={() => router.push("/settings")}
               className="p-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700"
