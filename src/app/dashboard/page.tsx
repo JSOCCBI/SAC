@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Settings, Sparkles, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { formatLastFirst } from "@/lib/utils";
 
 type UserProfile = {
   id: string;
@@ -88,7 +89,9 @@ export default function DashboardPage() {
         .limit(8),
     ]);
 
-    setUsers((userData as UserProfile[]) || []);
+    setUsers(((userData as UserProfile[]) || []).sort((a, b) =>
+      formatLastFirst(a.full_name || "").localeCompare(formatLastFirst(b.full_name || ""))
+    ));
     setAuditLog((logData as AuditEntry[]) || []);
     setLoading(false);
   }
@@ -360,12 +363,12 @@ export default function DashboardPage() {
                     {/* Avatar + name */}
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${user.role === "manager" ? "bg-black" : "bg-gray-400"}`}>
-                        {(user.full_name || "?").charAt(0).toUpperCase()}
+                        {formatLastFirst(user.full_name || "?").charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="font-semibold text-gray-900 text-sm truncate">
-                            {user.full_name || "—"}
+                            {user.full_name ? formatLastFirst(user.full_name) : "—"}
                             {user.id === currentUserId && (
                               <span className="ml-1.5 text-xs font-normal text-gray-400">(you)</span>
                             )}
