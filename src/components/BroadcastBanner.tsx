@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Megaphone } from "lucide-react";
+import { Megaphone, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+
+const STORAGE_KEY = "sac_dismissed_broadcasts";
 
 interface Broadcast {
   id: string;
@@ -12,7 +14,7 @@ interface Broadcast {
   expires_at: string | null;
 }
 
-function BroadcastBar({ broadcast }: { broadcast: Broadcast }) {
+function BroadcastBar({ broadcast, onDismiss }: { broadcast: Broadcast; onDismiss: (id: string) => void }) {
   let expiryText = "";
   if (broadcast.expires_at) {
     const expiry = new Date(broadcast.expires_at);
@@ -33,12 +35,20 @@ function BroadcastBar({ broadcast }: { broadcast: Broadcast }) {
           {expiryText && <span className="text-[11px] text-amber-700">{expiryText}</span>}
         </div>
       </div>
+      <button
+        onClick={() => onDismiss(broadcast.id)}
+        className="p-1 rounded-lg hover:bg-amber-500 transition-colors shrink-0"
+        aria-label="Dismiss"
+      >
+        <X className="w-3.5 h-3.5 text-amber-900" />
+      </button>
     </div>
   );
 }
 
 export default function BroadcastBanner() {
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
 
   async function fetchActive() {
     const now = new Date().toISOString();
@@ -53,6 +63,11 @@ export default function BroadcastBanner() {
   }
 
   useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) setDismissedIds(JSON.parse(stored));
+    } catch { /* ignore */ }
+
     fetchActive();
 
     const channel = supabase
@@ -68,11 +83,18 @@ export default function BroadcastBanner() {
     };
   }, []);
 
-  if (broadcasts.length === 0) return null;
+  function handleDismiss(id: string) {
+    const updated = [...dismissedIds, id];
+    setDismissedIds(updated);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch { /* ignore */ }
+  }
+
+  const visible = broadcasts.filter(b => !dismissedIds.includes(b.id));
+  if (visible.length === 0) return null;
 
   return (
     <div>
-      {broadcasts.map(b => <BroadcastBar key={b.id} broadcast={b} />)}
+      {visible.map(b => <BroadcastBar key={b.id} broadcast={b} onDismiss={handleDismiss} />)}
     </div>
   );
 }
