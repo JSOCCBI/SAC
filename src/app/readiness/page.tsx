@@ -205,6 +205,9 @@ export default function ReadinessPage() {
         .select("callsign_id, check_type_id, days_of_week, check_types(name)"),
     ]);
 
+    type RawUnit = { id: string; callsign: string };
+
+    const unitRows = (units ?? []) as unknown as RawUnit[];
     const subs = (rawSubs ?? []) as unknown as RawSub[];
     const requirements: RequirementRow[] = ((rawReqs ?? []) as unknown as RawReq[]).map(r => ({
       callsign_id: r.callsign_id,
@@ -215,7 +218,7 @@ export default function ReadinessPage() {
 
     const isoDay = astNow.getDay() === 0 ? 7 : astNow.getDay();
 
-    const statuses: ChecklistUnit[] = (units ?? []).map(u => {
+    const statuses: ChecklistUnit[] = unitRows.map(u => {
       const unitSubs = subs.filter(s => s.callsign === u.callsign);
       const submissions: SubEntry[] = unitSubs.map(s => ({
         id: s.id,
