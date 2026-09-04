@@ -19,6 +19,11 @@ const SACLogo = () => (
   </div>
 );
 
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+}
+
 const fadeInUp = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
@@ -93,7 +98,7 @@ export default function DashboardPage() {
       <div className="fixed inset-0 -z-10 sac-grid-bg pointer-events-none" />
 
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-gray-100" style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(16px)" }}>
+      <header className="sticky top-0 z-40 border-b border-gray-100 sac-header-bg" style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(16px)" }}>
         <div className="max-w-4xl mx-auto px-4 flex justify-between items-center h-14">
           <div className="flex items-center gap-2.5">
             <SACLogo />
@@ -140,6 +145,10 @@ export default function DashboardPage() {
               <span className="font-extrabold">Dashboard</span>
             )}
           </h1>
+          <p className="text-sm text-gray-500 mt-1">{greeting()} — have a great shift.</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {new Date().toLocaleDateString("en-AU", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+          </p>
         </motion.div>
 
         {/* Nav cards */}

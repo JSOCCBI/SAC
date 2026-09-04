@@ -125,7 +125,12 @@ html.dark textarea {
 
 html.dark input::placeholder { color: #6B7280 !important; }
 
-html.dark [style*="background: rgba(255,255,255"] {
+html.dark [style*="background: rgba(255,255,255"],
+html.dark [style*="background: rgba(255, 255, 255"] {
+  background: rgba(17, 24, 39, 0.92) !important;
+}
+
+html.dark .sac-header-bg {
   background: rgba(17, 24, 39, 0.92) !important;
 }
 

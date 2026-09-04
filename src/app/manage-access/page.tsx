@@ -182,7 +182,7 @@ export default function ManageAccessPage() {
       <div className="fixed inset-0 -z-10 sac-grid-bg pointer-events-none" />
 
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-gray-100" style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(16px)" }}>
+      <header className="sticky top-0 z-40 border-b border-gray-100 sac-header-bg" style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(16px)" }}>
         <div className="max-w-4xl mx-auto px-4 flex justify-between items-center h-14">
           <div className="flex items-center gap-1">
             <button
