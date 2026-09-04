@@ -94,30 +94,35 @@ export default function ReadinessPage() {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
-    const { data: subs } = await supabase
+    type ReadinessRow = {
+      id: string;
+      callsign: string | null;
+      deficiency_count: number;
+      submitted_at: string;
+      check_types: { name: string; category: string } | null;
+    };
+
+    const { data: rawSubs } = await supabase
       .from("check_submissions")
       .select("id, callsign, deficiency_count, submitted_at, check_types(name, category)")
       .gte("submitted_at", sevenDaysAgo.toISOString())
       .order("submitted_at", { ascending: true });
 
-    const dailySubs = (subs ?? []).filter(s =>
-      ((s.check_types as unknown) as { category: string } | null)?.category === "daily"
-    );
+    const subs = (rawSubs ?? []) as unknown as ReadinessRow[];
+
+    const dailySubs = subs.filter(s => s.check_types?.category === "daily");
 
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todaySubs = dailySubs.filter(s => new Date(s.submitted_at) >= todayStart);
     const todayTotal = todaySubs.length;
-    const todayClean = todaySubs.filter(s => ((s as unknown as { deficiency_count: number }).deficiency_count ?? 0) === 0).length;
+    const todayClean = todaySubs.filter(s => (s.deficiency_count ?? 0) === 0).length;
     const todayPct = todayTotal > 0 ? Math.round((todayClean / todayTotal) * 100) : null;
 
-    const byCallsign = todaySubs.map(s => {
-      const raw = s as unknown as { callsign: string | null; deficiency_count: number };
-      return {
-        callsign: raw.callsign ?? "Unknown",
-        deficiency_count: raw.deficiency_count ?? 0,
-        check_name: ((s.check_types as unknown) as { name: string } | null)?.name ?? "",
-      };
-    }).sort((a, b) => a.callsign.localeCompare(b.callsign));
+    const byCallsign = todaySubs.map(s => ({
+      callsign: s.callsign ?? "Unknown",
+      deficiency_count: s.deficiency_count ?? 0,
+      check_name: s.check_types?.name ?? "",
+    })).sort((a, b) => a.callsign.localeCompare(b.callsign));
 
     const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const trend: TrendDay[] = Array.from({ length: 7 }, (_, i) => {
@@ -131,7 +136,7 @@ export default function ReadinessPage() {
         return t >= d && t < next;
       });
       const total = daySubs.length;
-      const clean = daySubs.filter(s => ((s as unknown as { deficiency_count: number }).deficiency_count ?? 0) === 0).length;
+      const clean = daySubs.filter(s => (s.deficiency_count ?? 0) === 0).length;
       return {
         label: DAY_LABELS[d.getDay()],
         isToday: i === 6,
@@ -147,23 +152,36 @@ export default function ReadinessPage() {
 
   async function loadSubmissions() {
     setSubmissionsLoading(true);
-    const { data } = await supabase
+
+    type SubRow = {
+      id: string;
+      submitted_at: string;
+      started_at: string | null;
+      callsign: string | null;
+      task_type: string | null;
+      partner_1_name: string | null;
+      deficiency_count: number;
+      total_items: number;
+      check_types: { name: string; category: string } | null;
+    };
+
+    const { data: rawData } = await supabase
       .from("check_submissions")
       .select("id, submitted_at, started_at, callsign, task_type, partner_1_name, deficiency_count, total_items, check_types(name, category)")
       .order("submitted_at", { ascending: false })
       .limit(60);
 
-    const rows: Submission[] = (data ?? []).map(s => ({
+    const rows: Submission[] = ((rawData ?? []) as unknown as SubRow[]).map(s => ({
       id: s.id,
       submitted_at: s.submitted_at,
-      started_at: (s as unknown as { started_at: string | null }).started_at,
-      callsign: (s as unknown as { callsign: string | null }).callsign,
-      task_type: (s as unknown as { task_type: string | null }).task_type,
-      partner_1_name: (s as unknown as { partner_1_name: string | null }).partner_1_name,
-      deficiency_count: (s as unknown as { deficiency_count: number }).deficiency_count ?? 0,
-      total_items: (s as unknown as { total_items: number }).total_items ?? 0,
-      check_type_name: ((s.check_types as unknown) as { name: string } | null)?.name ?? "Unknown",
-      check_category: ((s.check_types as unknown) as { category: string } | null)?.category ?? "",
+      started_at: s.started_at,
+      callsign: s.callsign,
+      task_type: s.task_type,
+      partner_1_name: s.partner_1_name,
+      deficiency_count: s.deficiency_count ?? 0,
+      total_items: s.total_items ?? 0,
+      check_type_name: s.check_types?.name ?? "Unknown",
+      check_category: s.check_types?.category ?? "",
     }));
 
     setSubmissions(rows);
