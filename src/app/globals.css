@@ -81,3 +81,53 @@ textarea {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 2px; }
+
+/* Dark mode */
+html.dark, html.dark body {
+  background: #111827 !important;
+  color: #F9FAFB;
+}
+
+html.dark .sac-grid-bg {
+  background-image: radial-gradient(circle at 1px 1px, rgba(75, 85, 99, 0.4) 1px, transparent 0);
+  background-size: 28px 28px;
+}
+
+html.dark .bg-white { background-color: #1F2937 !important; }
+html.dark .bg-gray-50 { background-color: #111827 !important; }
+html.dark .bg-gray-100 { background-color: #374151 !important; }
+html.dark .bg-gray-200 { background-color: #4B5563 !important; }
+html.dark .border-gray-100 { border-color: #374151 !important; }
+html.dark .border-gray-200 { border-color: #4B5563 !important; }
+html.dark .divide-gray-50 > * + * { border-color: #374151 !important; }
+html.dark .text-gray-900 { color: #F9FAFB !important; }
+html.dark .text-gray-800 { color: #E5E7EB !important; }
+html.dark .text-gray-700 { color: #D1D5DB !important; }
+html.dark .text-gray-600 { color: #9CA3AF !important; }
+html.dark .text-gray-500 { color: #9CA3AF !important; }
+html.dark .text-gray-400 { color: #6B7280 !important; }
+html.dark .text-gray-300 { color: #4B5563 !important; }
+html.dark .shadow-sm { box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important; }
+html.dark .hover\:bg-gray-50:hover { background-color: #1F2937 !important; }
+html.dark .hover\:bg-gray-100:hover { background-color: #374151 !important; }
+html.dark .hover\:bg-gray-200:hover { background-color: #4B5563 !important; }
+html.dark .hover\:text-gray-700:hover { color: #D1D5DB !important; }
+
+html.dark input[type="text"],
+html.dark input[type="email"],
+html.dark input[type="password"],
+html.dark select,
+html.dark textarea {
+  color: #F9FAFB !important;
+  background-color: #1F2937 !important;
+  border-color: #374151 !important;
+}
+
+html.dark input::placeholder { color: #6B7280 !important; }
+
+html.dark [style*="background: rgba(255,255,255"] {
+  background: rgba(17, 24, 39, 0.92) !important;
+}
+
+html.dark .border-t { border-color: #374151; }
+html.dark .border-b { border-color: #374151; }

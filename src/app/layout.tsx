@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import BroadcastBanner from "@/components/BroadcastBanner";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta",
@@ -34,7 +35,7 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   themeColor: "#ffffff",
-  colorScheme: "light",
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({
@@ -44,9 +45,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `try{const t=localStorage.getItem("sac-theme");if(t==="dark")document.documentElement.classList.add("dark")}catch(e){}` }} />
+      </head>
       <body className={`${plusJakartaSans.variable} ${geistMono.variable} antialiased`}>
-        <BroadcastBanner />
-        {children}
+        <ThemeProvider>
+          <BroadcastBanner />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

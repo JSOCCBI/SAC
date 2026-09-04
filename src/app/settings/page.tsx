@@ -3,14 +3,16 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ChevronLeft, Loader2, CheckCircle2, Code2 } from "lucide-react";
+import { ChevronLeft, Loader2, CheckCircle2, Code2, Sun, Moon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useTheme } from "@/components/ThemeProvider";
 
 const fadeInUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.35 } };
 const stagger = { animate: { transition: { staggerChildren: 0.06 } } };
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { theme, toggle } = useTheme();
   const [firstName, setFirstName] = useState("");
   const [middleName, setMiddleName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -154,6 +156,29 @@ export default function SettingsPage() {
             <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-1.5">
               <Code2 className="w-3 h-3 text-gray-300" />
               <p className="text-[10px] text-gray-300">Built with Next.js · Supabase · Tailwind CSS</p>
+            </div>
+          </motion.div>
+
+          {/* Appearance card */}
+          <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm mb-5">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.5px] mb-4">Appearance</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {theme === "dark"
+                  ? <Moon className="w-5 h-5 text-gray-500" />
+                  : <Sun className="w-5 h-5 text-gray-500" />
+                }
+                <div>
+                  <p className="text-sm font-bold text-gray-900">{theme === "dark" ? "Night Mode" : "Day Mode"}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Tap to switch theme</p>
+                </div>
+              </div>
+              <button
+                onClick={toggle}
+                className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${theme === "dark" ? "bg-indigo-600" : "bg-gray-200"}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${theme === "dark" ? "translate-x-6" : "translate-x-0"}`} />
+              </button>
             </div>
           </motion.div>
 
