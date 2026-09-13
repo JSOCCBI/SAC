@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Sparkles, RefreshCw, Megaphone, ArrowLeft } from "lucide-react";
+import { Loader2, Sparkles, RefreshCw, ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatLastFirst } from "@/lib/utils";
 
@@ -222,27 +222,6 @@ export default function ManageAccessPage() {
           <h1 className="text-2xl font-light text-gray-900 tracking-tight mt-1">
             Manage <span className="font-extrabold">Access</span>
           </h1>
-        </motion.div>
-
-        {/* Release Notes quick action */}
-        <motion.div {...fadeInUp} transition={{ delay: 0.02, ...fadeInUp.transition }} className="mb-6">
-          <button
-            onClick={() => router.push("/release-notes")}
-            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 flex items-center justify-between gap-3 hover:bg-gray-100 transition-colors text-left"
-          >
-            <div className="flex items-center gap-3.5">
-              <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
-                <Megaphone className="w-4 h-4 text-gray-500" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-900">Release Notes</p>
-                <p className="text-[11px] text-gray-400 mt-0.5">Publish What&apos;s New for SEC &amp; IMS</p>
-              </div>
-            </div>
-            <svg className="w-4 h-4 text-gray-300 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
-          </button>
         </motion.div>
 
         {/* Stats */}
