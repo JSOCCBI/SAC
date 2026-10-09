@@ -124,7 +124,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <p className="text-sm font-extrabold text-gray-900 tracking-tight">SOS Access</p>
-                <p className="text-xs text-gray-400">Version 1.0.0</p>
+                <p className="text-xs text-gray-400">Version 1.2.0{process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ? ` · build ${process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.slice(0, 7)}` : ""}</p>
               </div>
             </div>
             <div className="space-y-3 border-t border-gray-100 pt-4">
@@ -146,7 +146,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex justify-between items-center">
                 <p className="text-xs text-gray-400">Last updated</p>
-                <p className="text-xs font-semibold text-gray-700">July 2026</p>
+                <p className="text-xs font-semibold text-gray-700">October 2026</p>
               </div>
               <div className="flex justify-between items-center">
                 <p className="text-xs text-gray-400">Environment</p>
@@ -238,6 +238,15 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
+          </motion.div>
+          {/* Copyright */}
+          <motion.div variants={fadeInUp} className="mt-8 mb-2 px-4 text-center space-y-1">
+            <p className="text-[11px] leading-relaxed text-gray-400">
+              © 2026 Hamad Medical Corporation Ambulance Service - Special Operations Service. All rights reserved.
+            </p>
+            <p className="text-[11px] leading-relaxed text-gray-400">
+              Developed and maintained by Rey Ian Cabanganan, Business Intelligence.
+            </p>
           </motion.div>
         </motion.div>
       </main>
