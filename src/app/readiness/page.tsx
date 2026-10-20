@@ -189,7 +189,7 @@ export default function ReadinessPage() {
       callsign_id: string;
       check_type_id: string;
       days_of_week: number[];
-      check_types: { name: string } | null;
+      check_types: { name: string; enabled: boolean } | null;
     };
 
     const [{ data: units }, { data: rawSubs }, { data: rawReqs }] = await Promise.all([
@@ -202,14 +202,15 @@ export default function ReadinessPage() {
         .order("submitted_at", { ascending: false }),
       supabase
         .from("callsign_check_requirements")
-        .select("callsign_id, check_type_id, days_of_week, check_types(name)"),
+        .select("callsign_id, check_type_id, days_of_week, check_types(name, enabled)"),
     ]);
 
     type RawUnit = { id: string; callsign: string };
 
     const unitRows = (units ?? []) as unknown as RawUnit[];
     const subs = (rawSubs ?? []) as unknown as RawSub[];
-    const requirements: RequirementRow[] = ((rawReqs ?? []) as unknown as RawReq[]).map(r => ({
+    // Disabled checklists (work in progress in SEC) aren't required yet, so they never show as overdue
+    const requirements: RequirementRow[] = ((rawReqs ?? []) as unknown as RawReq[]).filter(r => r.check_types?.enabled !== false).map(r => ({
       callsign_id: r.callsign_id,
       check_type_id: r.check_type_id,
       days_of_week: r.days_of_week ?? [],
