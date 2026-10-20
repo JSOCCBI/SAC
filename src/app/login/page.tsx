@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -96,7 +97,12 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Password</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-gray-600">Password</label>
+                  <Link href="/forgot-password" className="text-xs text-gray-700 font-semibold hover:underline">
+                    Forgot password?
+                  </Link>
+                </div>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
