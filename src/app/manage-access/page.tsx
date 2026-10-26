@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Sparkles, RefreshCw, ArrowLeft, ShieldCheck, Download, UserX, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatLastFirst } from "@/lib/utils";
+import { TERMS_VERSION } from "@/components/TermsGate";
 
 type UserProfile = {
   id: string;
@@ -63,8 +64,10 @@ export default function ManageAccessPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "staff" | "manager" | "new">("all");
+  const [filter, setFilter] = useState<"all" | "staff" | "manager" | "new" | "noterms">("all");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  // Terms of Use acknowledgments for the current version: user id → date
+  const [termsAck, setTermsAck] = useState<Record<string, string>>({});
   // Data requests (Qatar PDPPL): export / anonymise one person
   const [privacyUser, setPrivacyUser] = useState<UserProfile | null>(null);
   const [privacyBusy, setPrivacyBusy] = useState<"export" | "anonymise" | null>(null);
@@ -80,7 +83,7 @@ export default function ManageAccessPage() {
     setCurrentUserId(session.user.id);
     setCurrentUserEmail(session.user.email ?? null);
 
-    const [{ data: userData }, { data: logData }] = await Promise.all([
+    const [{ data: userData }, { data: logData }, { data: ackData }] = await Promise.all([
       supabase
         .from("user_profiles")
         .select("id, full_name, role, active, created_at")
@@ -91,8 +94,13 @@ export default function ManageAccessPage() {
         .like("action", "[Access]%")
         .order("created_at", { ascending: false })
         .limit(8),
+      supabase
+        .from("terms_acknowledgments")
+        .select("user_id, acknowledged_at")
+        .eq("version", TERMS_VERSION),
     ]);
 
+    setTermsAck(Object.fromEntries(((ackData as { user_id: string; acknowledged_at: string }[]) || []).map(a => [a.user_id, a.acknowledged_at])));
     setUsers(((userData as UserProfile[]) || []).sort((a, b) =>
       formatLastFirst(a.full_name || "").localeCompare(formatLastFirst(b.full_name || ""))
     ));
@@ -203,14 +211,17 @@ export default function ManageAccessPage() {
     if (filter === "new")     return matchSearch && isNew(u.created_at);
     if (filter === "staff")   return matchSearch && u.role === "staff";
     if (filter === "manager") return matchSearch && u.role === "manager";
+    if (filter === "noterms") return matchSearch && u.active && !termsAck[u.id];
     return matchSearch;
   });
 
-  const filterTabs: { key: "all" | "staff" | "manager" | "new"; label: string; badge?: number }[] = [
+  const noTermsCount = users.filter(u => u.active && !termsAck[u.id]).length;
+  const filterTabs: { key: "all" | "staff" | "manager" | "new" | "noterms"; label: string; badge?: number }[] = [
     { key: "all",     label: "All" },
     { key: "new",     label: "New", badge: newUserCount },
     { key: "staff",   label: "Staff" },
     { key: "manager", label: "Manager" },
+    { key: "noterms", label: "Terms pending", badge: noTermsCount },
   ];
 
   return (
@@ -357,7 +368,7 @@ export default function ManageAccessPage() {
         ) : filtered.length === 0 ? (
           <motion.div {...fadeInUp} className="bg-white rounded-2xl border border-gray-100 p-10 text-center shadow-sm">
             <p className="text-gray-400 text-sm">
-              {filter === "new" ? `No new users in the last ${NEW_USER_DAYS} days.` : "No users found."}
+              {filter === "new" ? `No new users in the last ${NEW_USER_DAYS} days.` : filter === "noterms" ? "Everyone active has acknowledged the Terms of Use." : "No users found."}
             </p>
           </motion.div>
         ) : (
@@ -448,6 +459,15 @@ export default function ManageAccessPage() {
                         {badge.label}
                       </span>
                     ))}
+                    {termsAck[user.id] ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700" title="Terms of Use acknowledged">
+                        Terms ✓ {new Date(termsAck[user.id]).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+                      </span>
+                    ) : user.active && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700" title="Terms of Use not acknowledged yet">
+                        Terms pending
+                      </span>
+                    )}
                   </div>
                 </motion.div>
               );

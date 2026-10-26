@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import BroadcastBanner from "@/components/BroadcastBanner";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import TermsGate from "@/components/TermsGate";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta",
@@ -52,6 +53,7 @@ export default function RootLayout({
         <ThemeProvider>
           <BroadcastBanner />
           {children}
+          <TermsGate app="SAC" />
         </ThemeProvider>
       </body>
     </html>
