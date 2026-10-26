@@ -23,7 +23,7 @@ export async function middleware(request: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession();
   const { pathname } = request.nextUrl;
 
-  const publicRoutes = ["/login", "/forgot-password", "/reset-password"];
+  const publicRoutes = ["/login", "/forgot-password", "/reset-password", "/privacy"];
   const isPublic = publicRoutes.some(r => pathname.startsWith(r));
 
   if (!session && !isPublic) {
@@ -31,7 +31,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // A signed-in user opening a reset link must still reach the reset page
-  if (session && isPublic && !pathname.startsWith("/reset-password")) {
+  if (session && isPublic && !pathname.startsWith("/reset-password") && !pathname.startsWith("/privacy")) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

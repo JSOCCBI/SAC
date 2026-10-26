@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -268,6 +269,9 @@ export default function SettingsPage() {
             {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : "Save Changes"}
           </button>
         </div>
+        <p className="text-center text-[11px] text-gray-400 mt-6">
+          <Link href="/privacy" className="hover:underline">Privacy Notice</Link>
+        </p>
       </div>
     </div>
   );

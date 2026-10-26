@@ -142,6 +142,9 @@ export default function LoginPage() {
           <motion.p variants={fadeInUp} className="text-center text-xs text-gray-400 mt-6">
             SOS Operations · Hamad Medical Corporation
           </motion.p>
+          <motion.p variants={fadeInUp} className="text-center text-[11px] text-gray-400 mt-2">
+            <Link href="/privacy" className="hover:underline">Privacy Notice</Link>
+          </motion.p>
         </motion.div>
       </div>
     </div>
