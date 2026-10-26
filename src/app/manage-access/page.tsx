@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Sparkles, RefreshCw, ArrowLeft } from "lucide-react";
+import { Loader2, Sparkles, RefreshCw, ArrowLeft, ShieldCheck, Download, UserX, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatLastFirst } from "@/lib/utils";
 
@@ -65,6 +65,10 @@ export default function ManageAccessPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "staff" | "manager" | "new">("all");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  // Data requests (Qatar PDPPL): export / anonymise one person
+  const [privacyUser, setPrivacyUser] = useState<UserProfile | null>(null);
+  const [privacyBusy, setPrivacyBusy] = useState<"export" | "anonymise" | null>(null);
+  const [confirmText, setConfirmText] = useState("");
 
   useEffect(() => {
     loadData();
@@ -145,6 +149,38 @@ export default function ManageAccessPage() {
       await logAccess(`${user.full_name || "Unknown"} ${newActive ? "activated" : "deactivated"}`);
     }
     setUpdating(null);
+  }
+
+  const isAnonymised = (u: UserProfile) => (u.full_name ?? "").startsWith("Former staff #");
+
+  async function exportUserData(user: UserProfile) {
+    setPrivacyBusy("export");
+    const { data, error } = await supabase.rpc("privacy_export_user", { p_user: user.id });
+    setPrivacyBusy(null);
+    if (error || !data) { showToast("Export failed: " + (error?.message ?? "no data"), "error"); return; }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `sos-data-export-${user.id.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Data export downloaded.", "success");
+    await logAccess(`Data export for ${user.full_name || "Unknown"}`);
+  }
+
+  async function anonymiseUser(user: UserProfile) {
+    setPrivacyBusy("anonymise");
+    const { data, error } = await supabase.rpc("privacy_anonymise_user", { p_user: user.id });
+    setPrivacyBusy(null);
+    if (error || !data) { showToast("Anonymise failed: " + (error?.message ?? "no data"), "error"); return; }
+    const label = (data as { label?: string }).label ?? "Former staff";
+    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, full_name: label, active: false } : u));
+    // log the label only — the person's name must not be written back into the log
+    await logAccess(`User anonymised → ${label}`);
+    showToast(`Anonymised as ${label}.`, "success");
+    setPrivacyUser(null);
+    setConfirmText("");
   }
 
   function showToast(message: string, type: "success" | "error") {
@@ -363,6 +399,15 @@ export default function ManageAccessPage() {
                     </div>
 
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      {user.id !== currentUserId && (
+                        <button
+                          onClick={() => { setPrivacyUser(user); setConfirmText(""); }}
+                          title="Data request (export / anonymise)"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
                         onClick={() => toggleActive(user)}
                         disabled={updating === user.id + "_active" || user.id === currentUserId}
@@ -416,6 +461,59 @@ export default function ManageAccessPage() {
           </p>
         )}
       </div>
+
+      {/* Data request window */}
+      <AnimatePresence>
+        {privacyUser && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4"
+            onClick={() => !privacyBusy && setPrivacyUser(null)}
+          >
+            <motion.div initial={{ y: 24 }} animate={{ y: 0 }} exit={{ y: 24 }}
+              className="bg-white rounded-2xl w-full max-w-sm p-5 space-y-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-gray-900">Data request</h3>
+                  <p className="text-xs text-gray-500 mt-0.5 truncate">{privacyUser.full_name ? formatLastFirst(privacyUser.full_name) : "—"}</p>
+                </div>
+                <button onClick={() => !privacyBusy && setPrivacyUser(null)} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
+              </div>
+              <p className="text-xs text-gray-500">For requests under Qatar&apos;s personal data law (Law No. 13 of 2016). Every action is logged.</p>
+
+              <div className="border border-gray-100 rounded-xl p-3 space-y-2">
+                <p className="text-sm font-semibold text-gray-900">Export data</p>
+                <p className="text-xs text-gray-500">Download everything that references this person (account, checks, requests, reports, audit entries) as a file.</p>
+                <button onClick={() => exportUserData(privacyUser)} disabled={!!privacyBusy}
+                  className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white text-sm font-bold rounded-xl py-2.5 hover:bg-gray-800 disabled:opacity-50">
+                  {privacyBusy === "export" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Export data
+                </button>
+              </div>
+
+              <div className="border border-red-100 rounded-xl p-3 space-y-2">
+                <p className="text-sm font-semibold text-red-700">Anonymise</p>
+                {isAnonymised(privacyUser) ? (
+                  <p className="text-xs text-gray-500">This account is already anonymised.</p>
+                ) : (
+                  <>
+                    <p className="text-xs text-gray-600">
+                      Replaces this person&apos;s name and email in all records with a &ldquo;Former staff&rdquo; label, deactivates the account and blocks sign-in.
+                      Equipment results are kept. <b>This cannot be undone.</b>
+                    </p>
+                    <input value={confirmText} onChange={e => setConfirmText(e.target.value)} placeholder="Type ANONYMISE to confirm"
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400" />
+                    <button onClick={() => anonymiseUser(privacyUser)} disabled={!!privacyBusy || confirmText.trim() !== "ANONYMISE"}
+                      className="w-full flex items-center justify-center gap-2 bg-red-600 text-white text-sm font-bold rounded-xl py-2.5 hover:bg-red-700 disabled:opacity-40">
+                      {privacyBusy === "anonymise" ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />} Anonymise
+                    </button>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {toast && (
