@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SOS Access",
   description: "User access management for SOS operations.",
-  authors: [{ name: "Rey Ian T. Cabanganan" }],
+  authors: [{ name: "SOS Business Intelligence" }],
   formatDetection: { telephone: false },
   appleWebApp: {
     capable: true,

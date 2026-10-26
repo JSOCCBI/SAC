@@ -186,7 +186,7 @@ export default function DashboardPage() {
             © 2026 Hamad Medical Corporation Ambulance Service - Special Operations Service. All rights reserved.
           </p>
           <p className="text-[11px] leading-relaxed text-gray-400">
-            Developed and maintained by Rey Ian Cabanganan, Business Intelligence.
+            Developed and maintained by SOS Business Intelligence.
           </p>
         </motion.div>
       </div>

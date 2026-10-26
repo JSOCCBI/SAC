@@ -131,7 +131,7 @@ export default function SettingsPage() {
             <div className="space-y-3 border-t border-gray-100 pt-4">
               <div className="flex justify-between items-center">
                 <p className="text-xs text-gray-400">Created by</p>
-                <p className="text-xs font-semibold text-gray-700">Rey Ian Cabanganan</p>
+                <p className="text-xs font-semibold text-gray-700">SOS Business Intelligence</p>
               </div>
               <div className="flex justify-between items-center">
                 <p className="text-xs text-gray-400">Maintained by</p>
@@ -143,7 +143,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex justify-between items-center">
                 <p className="text-xs text-gray-400">Support</p>
-                <p className="text-xs font-semibold text-gray-700">rcabanganan@hamad.qa</p>
+                <p className="text-xs font-semibold text-gray-700">JSOCCBI@hamad-sos.com</p>
               </div>
               <div className="flex justify-between items-center">
                 <p className="text-xs text-gray-400">Last updated</p>
@@ -197,7 +197,7 @@ export default function SettingsPage() {
                   type="text"
                   value={lastName}
                   onChange={e => setLastName(e.target.value)}
-                  placeholder="Cabanganan"
+                  placeholder="Al-Hamad"
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-colors"
                 />
               </div>
@@ -208,7 +208,7 @@ export default function SettingsPage() {
                   type="text"
                   value={firstName}
                   onChange={e => setFirstName(e.target.value)}
-                  placeholder="Rey Ian"
+                  placeholder="Ahmed"
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-colors"
                 />
               </div>
@@ -221,7 +221,7 @@ export default function SettingsPage() {
                   type="text"
                   value={middleName}
                   onChange={e => setMiddleName(e.target.value)}
-                  placeholder="Tomedo"
+                  placeholder="Ali"
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-colors"
                 />
               </div>
@@ -246,7 +246,7 @@ export default function SettingsPage() {
               © 2026 Hamad Medical Corporation Ambulance Service - Special Operations Service. All rights reserved.
             </p>
             <p className="text-[11px] leading-relaxed text-gray-400">
-              Developed and maintained by Rey Ian Cabanganan, Business Intelligence.
+              Developed and maintained by SOS Business Intelligence.
             </p>
           </motion.div>
         </motion.div>
