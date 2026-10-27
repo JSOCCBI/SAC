@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 // Terms of Use acknowledgment, shared by SEC, IMS and SAC (same file in each app — keep them identical).
 // Shown once per user per TERMS_VERSION, in whichever app they open first; acknowledging covers all three.
 // Change TERMS_VERSION (in all three apps) to ask everyone again.
+// It also signs out deactivated accounts (user_profiles.active = false) with an explanation.
 
 export const TERMS_VERSION = "2026-10-26";
 const TERMS_LABEL = "Version 26 Oct 2026 · Beta";
@@ -28,6 +29,7 @@ export default function TermsGate({ app }: { app: "SEC" | "IMS" | "SAC" }) {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [needed, setNeeded] = useState(false);
+  const [deactivated, setDeactivated] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -39,13 +41,22 @@ export default function TermsGate({ app }: { app: "SEC" | "IMS" | "SAC" }) {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session || cancelled) return;
-      const { data, error: err } = await supabase
-        .from("terms_acknowledgments")
-        .select("version")
-        .eq("user_id", session.user.id)
-        .eq("version", TERMS_VERSION)
-        .maybeSingle();
-      if (cancelled || err) return; // never lock people out because of a network / read error
+      const [{ data: profile }, { data, error: err }] = await Promise.all([
+        supabase.from("user_profiles").select("active").eq("id", session.user.id).maybeSingle(),
+        supabase
+          .from("terms_acknowledgments")
+          .select("version")
+          .eq("user_id", session.user.id)
+          .eq("version", TERMS_VERSION)
+          .maybeSingle(),
+      ]);
+      if (cancelled) return;
+      if (profile?.active === false) {
+        await supabase.auth.signOut();
+        setDeactivated(true);
+        return;
+      }
+      if (err) return; // never lock people out because of a network / read error
       setUserId(session.user.id);
       setNeeded(!data);
     })();
@@ -65,6 +76,24 @@ export default function TermsGate({ app }: { app: "SEC" | "IMS" | "SAC" }) {
   async function signOut() {
     await supabase.auth.signOut();
     router.replace("/login");
+  }
+
+  if (deactivated) {
+    return (
+      <div className="fixed inset-0 z-[200] bg-black/60 flex items-center justify-center p-4" role="alertdialog" aria-modal="true">
+        <div className="bg-white rounded-2xl w-full max-w-sm p-5 space-y-3 shadow-xl text-center">
+          <h2 className="text-lg font-extrabold text-gray-900">Account deactivated</h2>
+          <p className="text-sm text-gray-700 leading-relaxed">
+            Your account has been deactivated, so you have been signed out. If you think this is a mistake, contact{" "}
+            <a href={`mailto:${CONTACT}`} className="font-semibold underline">{CONTACT}</a>.
+          </p>
+          <button onClick={() => { setDeactivated(false); router.replace("/login"); }}
+            className="w-full bg-black text-white text-sm font-bold px-4 py-3 rounded-xl hover:bg-gray-800 transition-colors">
+            OK
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (isPublic || !needed) return null;

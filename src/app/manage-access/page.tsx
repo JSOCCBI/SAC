@@ -314,8 +314,8 @@ export default function ManageAccessPage() {
         )}
 
         {/* Search + Filter tabs */}
-        <motion.div {...fadeInUp} transition={{ delay: 0.08, ...fadeInUp.transition }} className="flex gap-2 mb-4">
-          <div className="relative flex-1">
+        <motion.div {...fadeInUp} transition={{ delay: 0.08, ...fadeInUp.transition }} className="flex flex-col md:flex-row gap-2 mb-4">
+          <div className="relative flex-1 order-2 md:order-1">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
@@ -327,12 +327,12 @@ export default function ManageAccessPage() {
               className="w-full border border-gray-200 rounded-xl pl-8 pr-4 py-2.5 text-sm focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-colors bg-white"
             />
           </div>
-          <div className="flex rounded-xl overflow-hidden border border-gray-200 bg-white text-sm">
+          <div className="order-1 md:order-2 flex rounded-xl overflow-x-auto border border-gray-200 bg-white text-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {filterTabs.map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setFilter(tab.key)}
-                className={`relative px-3 py-2.5 font-medium transition-colors flex items-center gap-1.5 ${filter === tab.key ? "bg-black text-white" : "text-gray-500 hover:text-gray-700"}`}
+                className={`relative flex-1 md:flex-none justify-center whitespace-nowrap shrink-0 px-3 py-2.5 font-medium transition-colors flex items-center gap-1.5 ${filter === tab.key ? "bg-black text-white" : "text-gray-500 hover:text-gray-700"}`}
               >
                 {tab.key === "new" && <Sparkles className="w-3 h-3" />}
                 {tab.label}
