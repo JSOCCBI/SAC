@@ -30,6 +30,24 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // SAC is for active managers only — checked on the server for every page, not just at the login form
+  if (session && !isPublic) {
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("role, active")
+      .eq("id", session.user.id)
+      .single();
+
+    if (profile?.role !== "manager" || profile?.active === false) {
+      const reason = profile?.active === false ? "deactivated" : "no_access";
+      const redirectResponse = NextResponse.redirect(new URL(`/login?error=${reason}`, request.url));
+      request.cookies.getAll()
+        .filter(c => c.name.startsWith("sb-"))
+        .forEach(c => redirectResponse.cookies.set(c.name, "", { maxAge: 0, path: "/" }));
+      return redirectResponse;
+    }
+  }
+
   // A signed-in user opening a reset link must still reach the reset page
   if (session && isPublic && !pathname.startsWith("/reset-password") && !pathname.startsWith("/privacy")) {
     return NextResponse.redirect(new URL("/dashboard", request.url));

@@ -114,6 +114,11 @@ export default function ManageAccessPage() {
       user_email: currentUserEmail,
       action: `[Access] ${action}`,
     });
+    await refreshAccessLog();
+  }
+
+  // Role and active changes are logged by the database itself (schema v43), so only reload the list
+  async function refreshAccessLog() {
     const { data } = await supabase
       .from("inventory_audit_log")
       .select("id, user_email, action, created_at")
@@ -132,11 +137,11 @@ export default function ManageAccessPage() {
       .eq("id", user.id)
       .select("id");
     if (error || !data || data.length === 0) {
-      showToast("Failed to update role. Check permissions.", "error");
+      showToast(error?.code === "42501" ? error.message : "Failed to update role. Check permissions.", "error");
     } else {
       setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role: newRole } : u));
       showToast(`${user.full_name || "User"} is now ${newRole}.`, "success");
-      await logAccess(`${user.full_name || "Unknown"} role changed to ${newRole}`);
+      await refreshAccessLog();
     }
     setUpdating(null);
   }
@@ -150,11 +155,11 @@ export default function ManageAccessPage() {
       .eq("id", user.id)
       .select("id");
     if (error || !data || data.length === 0) {
-      showToast("Failed to update status. Check permissions.", "error");
+      showToast(error?.code === "42501" ? error.message : "Failed to update status. Check permissions.", "error");
     } else {
       setUsers(prev => prev.map(u => u.id === user.id ? { ...u, active: newActive } : u));
       showToast(`${user.full_name || "User"} ${newActive ? "activated" : "deactivated"}.`, "success");
-      await logAccess(`${user.full_name || "Unknown"} ${newActive ? "activated" : "deactivated"}`);
+      await refreshAccessLog();
     }
     setUpdating(null);
   }

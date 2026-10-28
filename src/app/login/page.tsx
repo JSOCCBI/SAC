@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -21,6 +21,13 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Message when the server sent someone back here (see middleware.ts)
+  useEffect(() => {
+    const reason = new URLSearchParams(window.location.search).get("error");
+    if (reason === "deactivated") setError("Your account has been deactivated. Contact JSOCCBI@hamad-sos.com if you think this is a mistake.");
+    else if (reason === "no_access") setError("Manager access only. Contact your administrator.");
+  }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
